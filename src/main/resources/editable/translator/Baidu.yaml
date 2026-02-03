@@ -1,0 +1,8 @@
+# Description: Baidu translator configuration
+
+# Baidu translation API key
+# https://api.fanyi.baidu.com/product/113
+# or set the environment variable BAIDU_API_KEY
+apiKey:
+# or set the environment variable BAIDU_APP_ID
+appId:

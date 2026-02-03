@@ -1,0 +1,20 @@
+# Description: Freed translator configuration
+
+# Freed API endpoint
+url: https://your-service.example/translate
+
+# Payload parameters
+languageModel: next-gen
+usageType: Translate
+
+# Header parameters
+acceptLanguage: zh-Hans
+appOsVersion: 18.5.0
+appDevice: iPhone11,8
+appBuild: 3065622
+appVersion: 25.37
+userAgent: ktor-client
+
+# Network retry
+retryCount: 2
+retryDelayMs: 500

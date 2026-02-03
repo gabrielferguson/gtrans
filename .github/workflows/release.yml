@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+#  push:
+#    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest]
+#        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          java-package: jdk
+
+      # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
+      # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.2' # Quotes required to prevent YAML converting to number
+
+      - name: read-yaml-file
+        uses: pietrobolcato/action-read-yaml@1.0.0
+        id: read_internal_config
+        with:
+          config: ${{ github.workspace }}/src/main/resources/internal.yaml
+
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          echo VERSION: v${{ steps.read_internal_config.outputs['agentVersionName'] }}
+          echo "VERSION=v${{ steps.read_internal_config.outputs['agentVersionName'] }}" >> $GITHUB_OUTPUT
+      #          echo ::set-output name=VERSION::${{ steps.read_internal_config.outputs['agentVersionName'] }}
+      #      - name: Get version
+      #        id: get_version
+      #        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - name: Change wrapper permissions
+        shell: bash
+        run: chmod +x ./gradlew
+
+      - name: "Build Jar Archive with Gradle"
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: ./gradlew clean -x test packageJarZipArchive
+
+      - name: "Build Jpackage Archive with Gradle for Windows"
+        shell: bash
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: ./gradlew clean -x test packageJpackageZipArchive
+
+      - name: "Build Jpackage Archive with Gradle for Linux"
+        shell: bash
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        run: ./gradlew clean -x test packageJpackageZipArchiveForLinux
+
+      - name: "Build Jpackage Archive with Gradle for Mac"
+        shell: bash
+        if: ${{ startsWith(matrix.os, 'macos') }}
+        run: ./gradlew clean -x test packageJpackageZipArchiveForMac
+
+      - name: Check version
+        shell: bash
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          echo "VERSION=${{ steps.get_version.outputs.VERSION }}"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: true
+          files: |
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-jar.zip
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-win-x86-64.zip
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-linux-x86-64.zip
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-linux-aarch64.zip
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-mac-aarch64.zip
+            releases/GTransAgent-bin-${{ steps.get_version.outputs.VERSION }}-mac-x86-64.zip
+ 
